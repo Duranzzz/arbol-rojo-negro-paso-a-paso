@@ -1,12 +1,16 @@
 # Árbol rojo-negro, paso a paso
 
+**[▶ Demo en vivo](https://red-black-tree-step-by-step.netlify.app/)**
+
 Visualización interactiva y **paso a paso** de un árbol rojo-negro (insertar, buscar, eliminar y recorrido en orden), pensada para explicarlo en clase.
 
 Es un *fork* mejorado de las [Data Structure Visualizations de David Galles (USF)](https://www.cs.usfca.edu/~galles/visualization/RedBlack.html): interfaz en español rediseñada para que quepa en pantalla sin scroll, narración escrita de cada paso con el caso del algoritmo que se está aplicando, historial navegable, validación automática de las propiedades del árbol y varias correcciones sobre el algoritmo original.
 
 ## Cómo ejecutarlo
 
-Todo el código está en la carpeta [`viz/`](viz/).
+**En línea** — entra en **[red-black-tree-step-by-step.netlify.app](https://red-black-tree-step-by-step.netlify.app/)** (se actualiza automáticamente con cada push a `main`).
+
+**Local** — todo el código está en la carpeta [`viz/`](viz/).
 
 1. Abre [`viz/index.html`](viz/index.html) en el navegador (doble clic o arrastrar el archivo).
 
