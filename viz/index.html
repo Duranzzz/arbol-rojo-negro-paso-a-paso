@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Visualización — Árbol rojo-negro</title>
+	<link rel="stylesheet" href="css/visualization.css?v=2">
+	<link rel="stylesheet" href="css/jquery-ui.css?v=2">
+	<script src="vendor/jquery.min.js?v=2"></script>
+	<script src="vendor/jquery-ui.min.js?v=2"></script>
+	<script src="animation/CustomEvents.js?v=2"></script>
+	<script src="animation/UndoFunctions.js?v=2"></script>
+	<script src="animation/AnimatedObject.js?v=2"></script>
+	<script src="animation/AnimatedLabel.js?v=2"></script>
+	<script src="animation/AnimatedCircle.js?v=2"></script>
+	<script src="animation/AnimatedRectangle.js?v=2"></script>
+	<script src="animation/AnimatedLinkedList.js?v=2"></script>
+	<script src="animation/HighlightCircle.js?v=2"></script>
+	<script src="animation/Line.js?v=2"></script>
+	<script src="animation/ObjectManager.js?v=2"></script>
+	<script src="animation/AnimationMain.js?v=2"></script>
+	<script src="algorithm/Algorithm.js?v=2"></script>
+	<script src="algorithm/RedBlack.js?v=2"></script>
+	<script src="ui/interfaz.js?v=2"></script>
+</head>
+<body onload="init();" class="VisualizationMainPage">
+	<div id="container">
+		<header id="header">
+			<h1>Árbol rojo-negro</h1>
+			<p class="header-tagline">Visualización paso a paso</p>
+			<div class="header-acciones">
+				<button type="button" id="btnAyuda" class="boton-fantasma" aria-expanded="false"
+					title="Reglas del árbol rojo-negro y atajos de teclado">Reglas y atajos</button>
+			</div>
+		</header>
+
+		<main id="mainContent">
+			<div class="workspace">
+				<aside class="controls-column" aria-label="Panel de controles">
+					<section id="algoControlSection" class="control-panel" aria-label="Operaciones sobre el árbol">
+						<h2 class="panel-title">Operaciones</h2>
+						<div class="panel-inner">
+							<table id="AlgorithmSpecificControls"></table>
+						</div>
+					</section>
+
+					<section id="generalAnimationControlSection" class="control-panel" aria-label="Controles de la animación">
+						<h2 class="panel-title">
+							Animación
+							<span id="estadoAnimacion" class="estado-chip estado-chip--fin">Lista</span>
+						</h2>
+						<div class="panel-inner">
+							<div id="GeneralAnimationControls"></div>
+						</div>
+					</section>
+
+					<section class="control-panel leyenda" aria-label="Leyenda de colores">
+						<h2 class="panel-title">Leyenda</h2>
+						<div class="panel-inner leyenda-lista">
+							<span class="leyenda-item"><i class="muestra muestra--roja"></i>Nodo rojo</span>
+							<span class="leyenda-item"><i class="muestra muestra--negra"></i>Nodo negro</span>
+							<span class="leyenda-item"><i class="muestra muestra--doble"></i>Doble negro</span>
+							<span class="leyenda-item"><i class="muestra muestra--nula"></i>Hoja nula</span>
+							<span class="leyenda-item"><i class="muestra muestra--foco"></i>Nodo en foco</span>
+							<span class="leyenda-item"><i class="muestra muestra--recorrido"></i>Recorrido</span>
+						</div>
+					</section>
+				</aside>
+
+				<div class="canvas-column">
+					<div class="canvas-shell">
+						<canvas id="canvas" aria-label="Lienzo de la visualización del árbol"></canvas>
+						<div class="canvas-zoom" role="group" aria-label="Zoom del lienzo">
+							<button type="button" id="btnZoomMenos" title="Alejar">−</button>
+							<button type="button" id="btnZoomEncaje" title="Encajar el árbol en la vista">Encajar</button>
+							<button type="button" id="btnZoomMas" title="Acercar">+</button>
+						</div>
+					</div>
+
+					<section id="panelPasos" class="panel-pasos" aria-live="polite" aria-label="Explicación del paso actual">
+						<div class="pasos-cabecera">
+							<span id="pasoFase" class="chip chip--fase">Listo</span>
+							<span id="pasoCaso" class="chip chip--caso" hidden></span>
+							<span id="pasoEstado" class="chip chip--estado" hidden></span>
+							<div class="pasos-progreso">
+								<span id="pasoContador" class="pasos-contador">Paso 0 de 0</span>
+								<div class="barra"><div id="pasoBarra" class="barra-relleno"></div></div>
+								<button type="button" id="btnHistorial" class="boton-fantasma" aria-expanded="false"
+									title="Ver los pasos anteriores de esta operación">Historial</button>
+							</div>
+						</div>
+						<p id="pasoTexto" class="pasos-texto">
+							Escribe un número y pulsa <strong>Insertar</strong>. La animación arranca en pausa:
+							usa <strong>Siguiente</strong> para avanzar paso a paso.
+						</p>
+						<ol id="historialLista" class="historial" hidden></ol>
+					</section>
+				</div>
+			</div>
+		</main>
+
+		<div id="modalAyuda" class="modal" hidden>
+			<div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="tituloAyuda">
+				<div class="modal-cabecera">
+					<h2 id="tituloAyuda">Reglas del árbol rojo-negro</h2>
+					<button type="button" id="btnCerrarAyuda" class="boton-fantasma" title="Cerrar">✕</button>
+				</div>
+				<div class="modal-cuerpo">
+					<ol class="reglas">
+						<li>Todo nodo es <b>rojo</b> o <b>negro</b>.</li>
+						<li>La <b>raíz</b> siempre es negra.</li>
+						<li>Todas las <b>hojas nulas</b> (NIL) son negras.</li>
+						<li>Un nodo rojo <b>no puede tener hijos rojos</b> (nunca dos rojos seguidos).</li>
+						<li>Desde cualquier nodo, todos los caminos hasta sus hojas nulas contienen el
+							<b>mismo número de nodos negros</b> (altura negra).</li>
+					</ol>
+					<p class="reglas-nota">
+						De ahí sale la garantía: ningún camino puede ser más del doble de largo que otro,
+						así que buscar, insertar y eliminar cuestan O(log n).
+					</p>
+					<h3>Atajos de teclado</h3>
+					<ul class="atajos">
+						<li><kbd>→</kbd> paso siguiente</li>
+						<li><kbd>←</kbd> paso anterior</li>
+						<li><kbd>Espacio</kbd> reproducir / pausar</li>
+						<li><kbd>Inicio</kbd> / <kbd>Fin</kbd> principio o final de la operación</li>
+						<li><kbd>Enter</kbd> (en el campo) insertar el valor</li>
+					</ul>
+					<p class="reglas-credito">
+						Basado en la visualización de
+						<a href="https://www.cs.usfca.edu/~galles/visualization/RedBlack.html" target="_blank" rel="noopener">David Galles (USF)</a>.
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
