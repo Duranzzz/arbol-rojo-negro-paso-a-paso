@@ -700,6 +700,7 @@ body.VisualizationMainPage {
 	width: 100% !important;
 	border-radius: 999px !important;
 	box-sizing: border-box;
+	touch-action: none;
 }
 
 .VisualizationMainPage .ui-slider .ui-slider-handle {
