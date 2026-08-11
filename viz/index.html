@@ -4,88 +4,94 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Visualización — Árbol rojo-negro</title>
-	<link rel="stylesheet" href="css/visualization.css?v=2">
-	<link rel="stylesheet" href="css/jquery-ui.css?v=2">
-	<script src="vendor/jquery.min.js?v=2"></script>
-	<script src="vendor/jquery-ui.min.js?v=2"></script>
-	<script src="animation/CustomEvents.js?v=2"></script>
-	<script src="animation/UndoFunctions.js?v=2"></script>
-	<script src="animation/AnimatedObject.js?v=2"></script>
-	<script src="animation/AnimatedLabel.js?v=2"></script>
-	<script src="animation/AnimatedCircle.js?v=2"></script>
-	<script src="animation/AnimatedRectangle.js?v=2"></script>
-	<script src="animation/AnimatedLinkedList.js?v=2"></script>
-	<script src="animation/HighlightCircle.js?v=2"></script>
-	<script src="animation/Line.js?v=2"></script>
-	<script src="animation/ObjectManager.js?v=2"></script>
-	<script src="animation/AnimationMain.js?v=2"></script>
-	<script src="algorithm/Algorithm.js?v=2"></script>
-	<script src="algorithm/RedBlack.js?v=2"></script>
-	<script src="ui/interfaz.js?v=2"></script>
+	<link rel="stylesheet" href="css/visualization.css?v=3">
+	<link rel="stylesheet" href="css/jquery-ui.css?v=3">
+	<script src="vendor/jquery.min.js?v=3"></script>
+	<script src="vendor/jquery-ui.min.js?v=3"></script>
+	<script src="ui/idiomas.js?v=3"></script>
+	<script src="animation/CustomEvents.js?v=3"></script>
+	<script src="animation/UndoFunctions.js?v=3"></script>
+	<script src="animation/AnimatedObject.js?v=3"></script>
+	<script src="animation/AnimatedLabel.js?v=3"></script>
+	<script src="animation/AnimatedCircle.js?v=3"></script>
+	<script src="animation/AnimatedRectangle.js?v=3"></script>
+	<script src="animation/AnimatedLinkedList.js?v=3"></script>
+	<script src="animation/HighlightCircle.js?v=3"></script>
+	<script src="animation/Line.js?v=3"></script>
+	<script src="animation/ObjectManager.js?v=3"></script>
+	<script src="animation/AnimationMain.js?v=3"></script>
+	<script src="algorithm/Algorithm.js?v=3"></script>
+	<script src="algorithm/RedBlack.js?v=3"></script>
+	<script src="ui/interfaz.js?v=3"></script>
 </head>
 <body onload="init();" class="VisualizationMainPage">
 	<div id="container">
 		<header id="header">
 			<h1>Árbol rojo-negro</h1>
-			<p class="header-tagline">Visualización paso a paso</p>
+			<p class="header-tagline" data-i18n="ui.subtitulo">Visualización paso a paso</p>
 			<div class="header-acciones">
+				<button type="button" id="btnIdioma" class="boton-fantasma boton-idioma"
+					data-i18n="ui.idioma" data-i18n-title="ui.idiomaTitulo"
+					title="Switch to English">English</button>
 				<button type="button" id="btnAyuda" class="boton-fantasma" aria-expanded="false"
+					data-i18n="ui.reglasBtn" data-i18n-title="ui.reglasBtnTitulo"
 					title="Reglas del árbol rojo-negro y atajos de teclado">Reglas y atajos</button>
 			</div>
 		</header>
 
 		<main id="mainContent">
 			<div class="workspace">
-				<aside class="controls-column" aria-label="Panel de controles">
-					<section id="algoControlSection" class="control-panel" aria-label="Operaciones sobre el árbol">
-						<h2 class="panel-title">Operaciones</h2>
+				<aside class="controls-column" data-i18n-aria="ui.panelControles" aria-label="Panel de controles">
+					<section id="algoControlSection" class="control-panel" data-i18n-aria="ui.panelOperaciones" aria-label="Operaciones sobre el árbol">
+						<h2 class="panel-title" data-i18n="ui.operaciones">Operaciones</h2>
 						<div class="panel-inner">
 							<table id="AlgorithmSpecificControls"></table>
 						</div>
 					</section>
 
-					<section id="generalAnimationControlSection" class="control-panel" aria-label="Controles de la animación">
+					<section id="generalAnimationControlSection" class="control-panel" data-i18n-aria="ui.panelAnimacion" aria-label="Controles de la animación">
 						<h2 class="panel-title">
-							Animación
-							<span id="estadoAnimacion" class="estado-chip estado-chip--fin">Lista</span>
+							<span data-i18n="ui.animacion">Animación</span>
+							<span id="estadoAnimacion" class="estado-chip estado-chip--fin" data-i18n="ui.estadoLista">Lista</span>
 						</h2>
 						<div class="panel-inner">
 							<div id="GeneralAnimationControls"></div>
 						</div>
 					</section>
 
-					<section class="control-panel leyenda" aria-label="Leyenda de colores">
-						<h2 class="panel-title">Leyenda</h2>
+					<section class="control-panel leyenda" data-i18n-aria="ui.panelLeyenda" aria-label="Leyenda de colores">
+						<h2 class="panel-title" data-i18n="ui.leyenda">Leyenda</h2>
 						<div class="panel-inner leyenda-lista">
-							<span class="leyenda-item"><i class="muestra muestra--roja"></i>Nodo rojo</span>
-							<span class="leyenda-item"><i class="muestra muestra--negra"></i>Nodo negro</span>
-							<span class="leyenda-item"><i class="muestra muestra--doble"></i>Doble negro</span>
-							<span class="leyenda-item"><i class="muestra muestra--nula"></i>Hoja nula</span>
-							<span class="leyenda-item"><i class="muestra muestra--foco"></i>Nodo en foco</span>
-							<span class="leyenda-item"><i class="muestra muestra--recorrido"></i>Recorrido</span>
+							<span class="leyenda-item"><i class="muestra muestra--roja"></i><span data-i18n="leyenda.rojo">Nodo rojo</span></span>
+							<span class="leyenda-item"><i class="muestra muestra--negra"></i><span data-i18n="leyenda.negro">Nodo negro</span></span>
+							<span class="leyenda-item"><i class="muestra muestra--doble"></i><span data-i18n="leyenda.doble">Doble negro</span></span>
+							<span class="leyenda-item"><i class="muestra muestra--nula"></i><span data-i18n="leyenda.nula">Hoja nula</span></span>
+							<span class="leyenda-item"><i class="muestra muestra--foco"></i><span data-i18n="leyenda.foco">Nodo en foco</span></span>
+							<span class="leyenda-item"><i class="muestra muestra--recorrido"></i><span data-i18n="leyenda.recorrido">Recorrido</span></span>
 						</div>
 					</section>
 				</aside>
 
 				<div class="canvas-column">
 					<div class="canvas-shell">
-						<canvas id="canvas" aria-label="Lienzo de la visualización del árbol"></canvas>
-						<div class="canvas-zoom" role="group" aria-label="Zoom del lienzo">
-							<button type="button" id="btnZoomMenos" title="Alejar">−</button>
-							<button type="button" id="btnZoomEncaje" title="Encajar el árbol en la vista">Encajar</button>
-							<button type="button" id="btnZoomMas" title="Acercar">+</button>
+						<canvas id="canvas" data-i18n-aria="ui.lienzo" aria-label="Lienzo de la visualización del árbol"></canvas>
+						<div class="canvas-zoom" role="group" data-i18n-aria="ui.zoomGrupo" aria-label="Zoom del lienzo">
+							<button type="button" id="btnZoomMenos" data-i18n-title="ui.alejar" title="Alejar">−</button>
+							<button type="button" id="btnZoomEncaje" data-i18n="ui.encajar" data-i18n-title="ui.encajarTitulo" title="Encajar el árbol en la vista">Encajar</button>
+							<button type="button" id="btnZoomMas" data-i18n-title="ui.acercar" title="Acercar">+</button>
 						</div>
 					</div>
 
-					<section id="panelPasos" class="panel-pasos" aria-live="polite" aria-label="Explicación del paso actual">
+					<section id="panelPasos" class="panel-pasos" aria-live="polite" data-i18n-aria="ui.panelPasos" aria-label="Explicación del paso actual">
 						<div class="pasos-cabecera">
-							<span id="pasoFase" class="chip chip--fase">Listo</span>
+							<span id="pasoFase" class="chip chip--fase" data-i18n="ui.listo">Listo</span>
 							<span id="pasoCaso" class="chip chip--caso" hidden></span>
 							<span id="pasoEstado" class="chip chip--estado" hidden></span>
 							<div class="pasos-progreso">
 								<span id="pasoContador" class="pasos-contador">Paso 0 de 0</span>
 								<div class="barra"><div id="pasoBarra" class="barra-relleno"></div></div>
 								<button type="button" id="btnHistorial" class="boton-fantasma" aria-expanded="false"
+									data-i18n="ui.historial" data-i18n-title="ui.historialTitulo"
 									title="Ver los pasos anteriores de esta operación">Historial</button>
 							</div>
 						</div>
@@ -102,32 +108,32 @@
 		<div id="modalAyuda" class="modal" hidden>
 			<div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="tituloAyuda">
 				<div class="modal-cabecera">
-					<h2 id="tituloAyuda">Reglas del árbol rojo-negro</h2>
-					<button type="button" id="btnCerrarAyuda" class="boton-fantasma" title="Cerrar">✕</button>
+					<h2 id="tituloAyuda" data-i18n="reglas.titulo">Reglas del árbol rojo-negro</h2>
+					<button type="button" id="btnCerrarAyuda" class="boton-fantasma" data-i18n-title="reglas.cerrar" title="Cerrar">✕</button>
 				</div>
 				<div class="modal-cuerpo">
 					<ol class="reglas">
-						<li>Todo nodo es <b>rojo</b> o <b>negro</b>.</li>
-						<li>La <b>raíz</b> siempre es negra.</li>
-						<li>Todas las <b>hojas nulas</b> (NIL) son negras.</li>
-						<li>Un nodo rojo <b>no puede tener hijos rojos</b> (nunca dos rojos seguidos).</li>
-						<li>Desde cualquier nodo, todos los caminos hasta sus hojas nulas contienen el
+						<li data-i18n-html="reglas.r1">Todo nodo es <b>rojo</b> o <b>negro</b>.</li>
+						<li data-i18n-html="reglas.r2">La <b>raíz</b> siempre es negra.</li>
+						<li data-i18n-html="reglas.r3">Todas las <b>hojas nulas</b> (NIL) son negras.</li>
+						<li data-i18n-html="reglas.r4">Un nodo rojo <b>no puede tener hijos rojos</b> (nunca dos rojos seguidos).</li>
+						<li data-i18n-html="reglas.r5">Desde cualquier nodo, todos los caminos hasta sus hojas nulas contienen el
 							<b>mismo número de nodos negros</b> (altura negra).</li>
 					</ol>
-					<p class="reglas-nota">
+					<p class="reglas-nota" data-i18n="reglas.nota">
 						De ahí sale la garantía: ningún camino puede ser más del doble de largo que otro,
 						así que buscar, insertar y eliminar cuestan O(log n).
 					</p>
-					<h3>Atajos de teclado</h3>
+					<h3 data-i18n="reglas.atajos">Atajos de teclado</h3>
 					<ul class="atajos">
-						<li><kbd>→</kbd> paso siguiente</li>
-						<li><kbd>←</kbd> paso anterior</li>
-						<li><kbd>Espacio</kbd> reproducir / pausar</li>
-						<li><kbd>Inicio</kbd> / <kbd>Fin</kbd> principio o final de la operación</li>
-						<li><kbd>Enter</kbd> (en el campo) insertar el valor</li>
+						<li data-i18n-html="reglas.a1"><kbd>→</kbd> paso siguiente</li>
+						<li data-i18n-html="reglas.a2"><kbd>←</kbd> paso anterior</li>
+						<li data-i18n-html="reglas.a3"><kbd>Espacio</kbd> reproducir / pausar</li>
+						<li data-i18n-html="reglas.a4"><kbd>Inicio</kbd> / <kbd>Fin</kbd> principio o final de la operación</li>
+						<li data-i18n-html="reglas.a5"><kbd>Enter</kbd> (en el campo) insertar el valor</li>
 					</ul>
 					<p class="reglas-credito">
-						Basado en la visualización de
+						<span data-i18n="reglas.credito">Basado en la visualización de</span>
 						<a href="https://www.cs.usfca.edu/~galles/visualization/RedBlack.html" target="_blank" rel="noopener">David Galles (USF)</a>.
 					</p>
 				</div>

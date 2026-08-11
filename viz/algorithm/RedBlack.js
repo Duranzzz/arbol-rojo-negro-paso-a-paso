@@ -70,32 +70,34 @@ var PRINT_HORIZONTAL_GAP = 50;
 // el número que se lee en pantalla coincida con el orden del razonamiento.
 /////////////////////////////////////////////////////////////////////////////////
 
-var FASE_INSERTAR = "Insertar";
-var FASE_ELIMINAR = "Eliminar";
-var FASE_BUSCAR = "Buscar";
-var FASE_IMPRIMIR = "Recorrido";
-var FASE_DEMO = "Demo";
-var FASE_LIMPIAR = "Limpiar";
+var FASE_INSERTAR = "fase.insertar";
+var FASE_ELIMINAR = "fase.eliminar";
+var FASE_BUSCAR = "fase.buscar";
+var FASE_IMPRIMIR = "fase.recorrido";
+var FASE_DEMO = "fase.demo";
+var FASE_LIMPIAR = "fase.limpiar";
 
 // Inserción
-var INS_CASO_1 = "Caso 1 · Tío rojo";
-var INS_CASO_2 = "Caso 2 · Triángulo";
-var INS_CASO_3 = "Caso 3 · Línea recta";
-var INS_CASO_RAIZ = "Caso raíz";
-var INS_CASO_BASE = "Caso base";
+var INS_CASO_1 = "caso.ins1";
+var INS_CASO_2 = "caso.ins2";
+var INS_CASO_3 = "caso.ins3";
+var INS_CASO_RAIZ = "caso.insRaiz";
+var INS_CASO_BASE = "caso.insBase";
 
 // Borrado (numeración estándar del doble negro)
-var DEL_CASO_1 = "Caso 1 · Hermano rojo";
-var DEL_CASO_2 = "Caso 2 · Hermano negro con hijos negros";
-var DEL_CASO_3 = "Caso 3 · Sobrino cercano rojo";
-var DEL_CASO_4 = "Caso 4 · Sobrino lejano rojo";
-var DEL_CASO_RAIZ = "Caso raíz";
+var DEL_CASO_1 = "caso.del1";
+var DEL_CASO_2 = "caso.del2";
+var DEL_CASO_3 = "caso.del3";
+var DEL_CASO_4 = "caso.del4";
+var DEL_CASO_RAIZ = "caso.delRaiz";
 
-var CASO_FIN = "Operación completada";
+var CASO_FIN = "caso.fin";
 
-// Separador interno del mensaje de narración: fase / caso / detalle / estado.
-// El panel HTML lo parte por aquí. No usar en el texto visible.
+// Separadores internos del mensaje de narración. El panel HTML lo parte por
+// aquí, así que no deben aparecer en ningún texto visible.
+//   faseClave §§ casoClave §§ textoClave §§ args §§ estado §§ argsEstado
 var NARRACION_SEP = "§§";
+var ARG_SEP = "¦";
 
 
 function RedBlack(am, w, h) {
@@ -158,24 +160,38 @@ RedBlack.prototype.normalizeNumber = function (input) {
 // existe ningún texto que no vaya seguido de su "Step". Todo pasa por paso().
 /////////////////////////////////////////////////////////////////////////////////
 
-RedBlack.prototype.narrar = function (caso, detalle, estado) {
-	var partes = [this.faseActual || "", caso || "", detalle || "", estado || ""];
+// El algoritmo nunca escribe texto: emite la CLAVE del mensaje y sus argumentos.
+// Quien traduce es el panel, al pintar, así que cambiar de idioma reescribe
+// también el paso que ya está en pantalla (ver ui/idiomas.js).
+RedBlack.prototype.narrar = function (caso, clave, args, estado, argsEstado) {
+	var partes = [
+		this.faseActual || "",
+		caso || "",
+		clave || "",
+		(args || []).join(ARG_SEP),
+		estado || "",
+		(argsEstado || []).join(ARG_SEP)
+	];
 	this.cmd("SetText", 0, partes.join(NARRACION_SEP));
 };
 
 
-RedBlack.prototype.paso = function (caso, detalle, estado) {
-	this.narrar(caso, detalle, estado);
+RedBlack.prototype.paso = function (caso, clave, args, estado, argsEstado) {
+	this.narrar(caso, clave, args, estado, argsEstado);
 	this.cmd("Step");
 };
 
 
 // Paso final de una operación: comprueba las cinco propiedades del árbol
 // rojo-negro y lo reporta en el panel.
-RedBlack.prototype.finalizar = function (resumen) {
+RedBlack.prototype.finalizar = function (clave, args) {
 	var problemas = this.validarPropiedades();
-	var estado = problemas.length === 0 ? "ok" : "warn:" + problemas[0];
-	this.paso(CASO_FIN, resumen, estado);
+	if (problemas.length === 0) {
+		this.paso(CASO_FIN, clave, args, "ok");
+	}
+	else {
+		this.paso(CASO_FIN, clave, args, "warn:" + problemas[0].clave, problemas[0].args);
+	}
 };
 
 
@@ -188,7 +204,7 @@ RedBlack.prototype.validarPropiedades = function () {
 		return problemas;
 	}
 	if (this.treeRoot.blackLevel < 1) {
-		problemas.push("La raíz debería ser negra.");
+		problemas.push({ clave: "val.raizNegra", args: [] });
 	}
 
 	function alturaNegra(nodo) {
@@ -196,10 +212,10 @@ RedBlack.prototype.validarPropiedades = function () {
 			return 1;
 		}
 		if (nodo.blackLevel > 1) {
-			problemas.push("Ha quedado un nodo doble negro sin resolver (" + nodo.data + ").");
+			problemas.push({ clave: "val.dobleNegro", args: [nodo.data] });
 		}
 		if (nodo.blackLevel === 0 && nodo.parent != null && nodo.parent.blackLevel === 0) {
-			problemas.push("Dos rojos consecutivos: " + nodo.parent.data + " → " + nodo.data + ".");
+			problemas.push({ clave: "val.dosRojos", args: [nodo.parent.data, nodo.data] });
 		}
 		var izq = alturaNegra(nodo.left);
 		var der = alturaNegra(nodo.right);
@@ -207,7 +223,7 @@ RedBlack.prototype.validarPropiedades = function () {
 			return -1;
 		}
 		if (izq !== der) {
-			problemas.push("Altura negra desigual bajo " + nodo.data + " (" + izq + " vs " + der + ").");
+			problemas.push({ clave: "val.alturaDesigual", args: [nodo.data, izq, der] });
 			return -1;
 		}
 		return izq + (nodo.blackLevel > 0 ? 1 : 0);
@@ -233,47 +249,69 @@ RedBlack.prototype.addControls = function () {
 	}
 
 	this.valueField = addControlToAlgorithmBar("Text", "");
-	this.valueField.setAttribute("placeholder", "Valor numérico");
-	this.valueField.setAttribute("title", "Escribe un número y pulsa Insertar, Buscar o Eliminar (Enter inserta)");
-	this.valueField.setAttribute("aria-label", "Valor numérico");
 	this.valueField.onkeydown = this.returnSubmitFloat(this.valueField, this.insertCallback.bind(this), maxLen);
 	marcar(this.valueField, "control-celda control-celda--ancha");
 
-	this.insertButton = addControlToAlgorithmBar("Button", "Insertar");
+	this.insertButton = addControlToAlgorithmBar("Button", "");
 	this.insertButton.onclick = this.insertCallback.bind(this);
-	this.insertButton.setAttribute("title", "Inserta el valor en el árbol (Enter)");
 	marcar(this.insertButton, "control-celda control-celda--primaria");
 
-	this.findButton = addControlToAlgorithmBar("Button", "Buscar");
+	this.findButton = addControlToAlgorithmBar("Button", "");
 	this.findButton.onclick = this.findCallback.bind(this);
-	this.findButton.setAttribute("title", "Busca el valor recorriendo el árbol");
 	marcar(this.findButton, "control-celda");
 
-	this.deleteButton = addControlToAlgorithmBar("Button", "Eliminar");
+	this.deleteButton = addControlToAlgorithmBar("Button", "");
 	this.deleteButton.onclick = this.deleteCallback.bind(this);
-	this.deleteButton.setAttribute("title", "Elimina el valor del árbol");
 	marcar(this.deleteButton, "control-celda");
 
-	this.printButton = addControlToAlgorithmBar("Button", "Recorrido");
+	this.printButton = addControlToAlgorithmBar("Button", "");
 	this.printButton.onclick = this.printCallback.bind(this);
-	this.printButton.setAttribute("title", "Recorrido en orden (in-order): imprime los valores ordenados");
 	marcar(this.printButton, "control-celda");
 
-	this.demoButton = addControlToAlgorithmBar("Button", "Demo 1→19");
+	this.demoButton = addControlToAlgorithmBar("Button", "");
 	this.demoButton.onclick = this.demoCallback.bind(this);
-	this.demoButton.setAttribute("title", "Reinicia el árbol e inserta los números del 1 al 19");
 	marcar(this.demoButton, "control-celda");
 
-	this.clearButton = addControlToAlgorithmBar("Button", "Limpiar");
+	this.clearButton = addControlToAlgorithmBar("Button", "");
 	this.clearButton.onclick = this.clearCallback.bind(this);
-	this.clearButton.setAttribute("title", "Vacía el árbol");
 	marcar(this.clearButton, "control-celda");
 
-	this.showNullLeaves = addCheckboxToAlgorithmBar("Mostrar hojas nulas");
+	this.showNullLeaves = addCheckboxToAlgorithmBar("");
 	this.showNullLeaves.onclick = this.showNullLeavesCallback.bind(this);
 	this.showNullLeaves.checked = false;
-	this.showNullLeaves.setAttribute("title", "Muestra las hojas NIL negras que cuelgan de cada nodo");
 	marcar(this.showNullLeaves, "control-celda control-celda--ancha control-celda--check");
+	// La etiqueta de la casilla es un nodo de texto suelto: lo guardamos para
+	// poder reescribirlo al cambiar de idioma.
+	this.showNullLeavesLabel = this.showNullLeaves.nextSibling;
+
+	this.traducirControles();
+}
+
+
+// Reescribe rótulos y tooltips con el idioma activo.
+RedBlack.prototype.traducirControles = function () {
+	var t = Idioma.t;
+	this.valueField.setAttribute("placeholder", t("ui.valor"));
+	this.valueField.setAttribute("title", t("ui.valorTitulo"));
+	this.valueField.setAttribute("aria-label", t("ui.valor"));
+
+	var botones = [
+		[this.insertButton, "ui.insertar", "ui.insertarTitulo"],
+		[this.findButton, "ui.buscar", "ui.buscarTitulo"],
+		[this.deleteButton, "ui.eliminar", "ui.eliminarTitulo"],
+		[this.printButton, "ui.recorrido", "ui.recorridoTitulo"],
+		[this.demoButton, "ui.demo", "ui.demoTitulo"],
+		[this.clearButton, "ui.limpiar", "ui.limpiarTitulo"]
+	];
+	for (var i = 0; i < botones.length; i++) {
+		botones[i][0].setAttribute("value", t(botones[i][1]));
+		botones[i][0].setAttribute("title", t(botones[i][2]));
+	}
+
+	this.showNullLeaves.setAttribute("title", t("ui.mostrarNulasTitulo"));
+	if (this.showNullLeavesLabel) {
+		this.showNullLeavesLabel.nodeValue = t("ui.mostrarNulas");
+	}
 }
 
 
@@ -368,11 +406,11 @@ RedBlack.prototype.clearTree = function (ignorado) {
 	this.commands = [];
 	this.faseActual = FASE_LIMPIAR;
 	if (this.treeRoot == null) {
-		this.paso("", "El árbol ya estaba vacío.");
+		this.paso("", "lim.yaVacio");
 		return this.commands;
 	}
 	this.borrarTodosLosNodos();
-	this.paso("", "Árbol vaciado. Puedes empezar de cero.", "ok");
+	this.paso("", "lim.hecho", [], "ok");
 	return this.commands;
 }
 
@@ -383,10 +421,10 @@ RedBlack.prototype.demoElements = function (ignorado) {
 
 	if (this.treeRoot != null) {
 		this.borrarTodosLosNodos();
-		this.paso("", "Se vacía el árbol para empezar la demostración desde cero.");
+		this.paso("", "demo.vaciar");
 	}
 	else {
-		this.paso("", "Demostración: se insertan los números del 1 al 19, uno a uno.");
+		this.paso("", "demo.inicio");
 	}
 
 	// insertElement() reinicia this.commands y devuelve su propio bloque, así
@@ -398,7 +436,7 @@ RedBlack.prototype.demoElements = function (ignorado) {
 	}
 	this.commands = acumulado;
 	this.faseActual = FASE_DEMO;
-	this.finalizar("Demostración terminada: 19 valores insertados. Fíjate en que la altura del árbol apenas crece.");
+	this.finalizar("demo.fin");
 	return this.commands;
 }
 
@@ -412,7 +450,7 @@ RedBlack.prototype.printTree = function (unused) {
 	this.faseActual = FASE_IMPRIMIR;
 
 	if (this.treeRoot == null) {
-		this.paso("", "El árbol está vacío: no hay nada que recorrer.");
+		this.paso("", "rec.vacio");
 		return this.commands;
 	}
 
@@ -438,12 +476,12 @@ RedBlack.prototype.printTree = function (unused) {
 	this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, this.treeRoot.x, this.treeRoot.y);
 	this.xPosOfNextLabel = FIRST_PRINT_POS_X;
 	this.yPosOfNextLabel = this.first_print_pos_y;
-	this.paso("", "Recorrido en orden: primero el subárbol izquierdo, después el nodo, después el derecho. El resultado sale ordenado de menor a mayor.");
+	this.paso("", "rec.inicio");
 
 	this.printTreeRec(this.treeRoot);
 
 	this.cmd("Delete", this.highlightID);
-	this.paso("", "Recorrido completo. Los valores han salido ordenados: esa es la propiedad de todo árbol binario de búsqueda.", "ok");
+	this.paso("", "rec.fin", [], "ok");
 	for (var i = firstLabel; i < this.nextIndex; i++) {
 		this.cmd("Delete", i);
 	}
@@ -455,17 +493,17 @@ RedBlack.prototype.printTree = function (unused) {
 RedBlack.prototype.printTreeRec = function (tree) {
 	if (tree.left != null && !tree.left.phantomLeaf) {
 		this.cmd("Move", this.highlightID, tree.left.x, tree.left.y);
-		this.paso("", "Bajamos al subárbol izquierdo de " + tree.data + ": lo de la izquierda va antes.");
+		this.paso("", "rec.bajaIzq", [tree.data]);
 		this.printTreeRec(tree.left);
 		this.cmd("Move", this.highlightID, tree.x, tree.y);
-		this.paso("", "Volvemos a " + tree.data + ".");
+		this.paso("", "rec.volver", [tree.data]);
 	}
 
 	var nextLabelID = this.nextIndex++;
 	this.cmd("CreateLabel", nextLabelID, tree.data, tree.x, tree.y);
 	this.cmd("SetForegroundColor", nextLabelID, PRINT_COLOR);
 	this.cmd("Move", nextLabelID, this.xPosOfNextLabel, this.yPosOfNextLabel);
-	this.paso("", "Visitamos " + tree.data + " y lo añadimos a la salida.");
+	this.paso("", "rec.visitar", [tree.data]);
 
 	this.xPosOfNextLabel += PRINT_HORIZONTAL_GAP;
 	if (this.xPosOfNextLabel > this.print_max) {
@@ -475,10 +513,10 @@ RedBlack.prototype.printTreeRec = function (tree) {
 
 	if (tree.right != null && !tree.right.phantomLeaf) {
 		this.cmd("Move", this.highlightID, tree.right.x, tree.right.y);
-		this.paso("", "Bajamos al subárbol derecho de " + tree.data + ".");
+		this.paso("", "rec.bajaDer", [tree.data]);
 		this.printTreeRec(tree.right);
 		this.cmd("Move", this.highlightID, tree.x, tree.y);
-		this.paso("", "Volvemos a " + tree.data + ".");
+		this.paso("", "rec.volver", [tree.data]);
 	}
 }
 
@@ -499,26 +537,26 @@ RedBlack.prototype.findElement = function (findValue) {
 RedBlack.prototype.doFind = function (tree, value) {
 	if (tree == null || tree.phantomLeaf) {
 		if (this.treeRoot == null) {
-			this.paso("", "El árbol está vacío, así que " + value + " no puede estar.");
+			this.paso("", "bus.arbolVacio", [value]);
 		}
 		else {
-			this.paso("", "Hemos llegado a una hoja nula: por debajo no hay más nodos.");
+			this.paso("", "bus.hojaNula");
 		}
-		this.finalizar("El valor " + value + " no está en el árbol.");
+		this.finalizar("bus.finNo", [value]);
 		return;
 	}
 
 	this.cmd("SetHighlight", tree.graphicID, 1);
 
 	if (tree.data == value) {
-		this.paso("", "Comparamos " + value + " con " + tree.data + ": son iguales. ¡Encontrado!");
+		this.paso("", "bus.iguales", [value, tree.data]);
 		this.cmd("SetHighlight", tree.graphicID, 0);
-		this.finalizar("El valor " + value + " está en el árbol.");
+		this.finalizar("bus.finSi", [value]);
 		return;
 	}
 
 	if (tree.data > value) {
-		this.narrar("", "Comparamos " + value + " con " + tree.data + ": " + value + " < " + tree.data + ", así que solo puede estar en el subárbol izquierdo.");
+		this.narrar("", "bus.menor", [value, tree.data]);
 		if (tree.left != null) {
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.left.x, tree.left.y);
@@ -532,7 +570,7 @@ RedBlack.prototype.doFind = function (tree, value) {
 		this.doFind(tree.left, value);
 	}
 	else {
-		this.narrar("", "Comparamos " + value + " con " + tree.data + ": " + value + " > " + tree.data + ", así que solo puede estar en el subárbol derecho.");
+		this.narrar("", "bus.mayor", [value, tree.data]);
 		if (tree.right != null) {
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.right.x, tree.right.y);
@@ -619,8 +657,8 @@ RedBlack.prototype.insertElement = function (insertedValue) {
 		this.attachNullLeaves(this.treeRoot);
 		this.resizeTree();
 
-		this.paso(INS_CASO_BASE, "El árbol estaba vacío: " + insertedValue + " entra como raíz y se pinta de NEGRO, porque la raíz de un árbol rojo-negro siempre es negra.");
-		this.finalizar("Insertado " + insertedValue + " como raíz del árbol.");
+		this.paso(INS_CASO_BASE, "ins.raizVacia", [insertedValue]);
+		this.finalizar("ins.finRaiz", [insertedValue]);
 		return this.commands;
 	}
 
@@ -628,14 +666,14 @@ RedBlack.prototype.insertElement = function (insertedValue) {
 	this.cmd("CreateCircle", treeNodeID, insertedValue, 30, startingY);
 	this.cmd("SetForegroundColor", treeNodeID, FOREGROUND_RED);
 	this.cmd("SetBackgroundColor", treeNodeID, BACKGROUND_RED);
-	this.paso("", "El nodo " + insertedValue + " nace ROJO. Se inserta siempre en rojo porque así no cambia la altura negra de ningún camino; como mucho habrá que arreglar un doble rojo.");
+	this.paso("", "ins.naceRojo", [insertedValue]);
 
 	var insertElem = new RedBlackNode(insertedValue, treeNodeID, 100, 100);
 	this.cmd("SetHighlight", insertElem.graphicID, 1);
 	insertElem.height = 1;
 	this.insert(insertElem, this.treeRoot);
 
-	this.finalizar("Insertado " + insertedValue + ". El árbol vuelve a cumplir las propiedades rojo-negro.");
+	this.finalizar("ins.fin", [insertedValue]);
 	return this.commands;
 }
 
@@ -644,13 +682,11 @@ RedBlack.prototype.insert = function (elem, tree) {
 	this.cmd("SetHighlight", tree.graphicID, 1);
 
 	var esIzquierda = elem.data < tree.data;
-	var comparacion = esIzquierda
-		? elem.data + " < " + tree.data + ": bajamos por la izquierda."
-		: elem.data + " ≥ " + tree.data + ": bajamos por la derecha.";
+	var argsComp = [elem.data, tree.data];
 
 	if (esIzquierda) {
 		if (tree.left == null || tree.left.phantomLeaf) {
-			this.narrar("", "Comparamos " + comparacion + " Ahí abajo hay una hoja nula: ese es el sitio de " + elem.data + ".");
+			this.narrar("", "ins.compIzqHoja", argsComp);
 			this.cmd("Step");
 			this.cmd("SetHighlight", tree.graphicID, 0);
 			this.cmd("SetHighlight", elem.graphicID, 0);
@@ -664,11 +700,11 @@ RedBlack.prototype.insert = function (elem, tree) {
 			this.attachNullLeaves(elem);
 			this.resizeTree();
 
-			this.paso("", "El nodo " + elem.data + " ocupa el lugar de esa hoja nula, colgando de " + tree.data + ". Ahora toca comprobar si ha aparecido un doble rojo.");
+			this.paso("", "ins.colocado", [elem.data, tree.data]);
 			this.fixDoubleRed(elem);
 		}
 		else {
-			this.narrar("", "Comparamos " + comparacion);
+			this.narrar("", "ins.compIzq", argsComp);
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.left.x, tree.left.y);
 			this.cmd("Step");
@@ -679,7 +715,7 @@ RedBlack.prototype.insert = function (elem, tree) {
 	}
 	else {
 		if (tree.right == null || tree.right.phantomLeaf) {
-			this.narrar("", "Comparamos " + comparacion + " Ahí abajo hay una hoja nula: ese es el sitio de " + elem.data + ".");
+			this.narrar("", "ins.compDerHoja", argsComp);
 			this.cmd("Step");
 			this.cmd("SetHighlight", tree.graphicID, 0);
 			this.cmd("SetHighlight", elem.graphicID, 0);
@@ -696,11 +732,11 @@ RedBlack.prototype.insert = function (elem, tree) {
 			this.attachNullLeaves(elem);
 			this.resizeTree();
 
-			this.paso("", "El nodo " + elem.data + " ocupa el lugar de esa hoja nula, colgando de " + tree.data + ". Ahora toca comprobar si ha aparecido un doble rojo.");
+			this.paso("", "ins.colocado", [elem.data, tree.data]);
 			this.fixDoubleRed(elem);
 		}
 		else {
-			this.narrar("", "Comparamos " + comparacion);
+			this.narrar("", "ins.compDer", argsComp);
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.right.x, tree.right.y);
 			this.cmd("Step");
@@ -740,21 +776,21 @@ RedBlack.prototype.fixDoubleRed = function (tree) {
 	if (tree.parent == null) {
 		if (tree.blackLevel == 0) {
 			this.pintarNegro(tree);
-			this.paso(INS_CASO_RAIZ, "El nodo ha llegado a ser la raíz y estaba rojo. La raíz siempre es negra, así que se repinta: eso sube en uno la altura negra de TODOS los caminos a la vez, y por eso no rompe nada.");
+			this.paso(INS_CASO_RAIZ, "ins.raizRoja");
 		}
 		return;
 	}
 
 	if (tree.parent.blackLevel > 0) {
 		this.cmd("SetHighlight", tree.parent.graphicID, 1);
-		this.paso("", "El padre (" + tree.parent.data + ") es NEGRO, así que no hay dos rojos seguidos. No hay que arreglar nada.");
+		this.paso("", "ins.padreNegro", [tree.parent.data]);
 		this.cmd("SetHighlight", tree.parent.graphicID, 0);
 		return;
 	}
 
 	if (tree.parent.parent == null) {
 		this.pintarNegro(tree.parent);
-		this.paso(INS_CASO_RAIZ, "El padre es rojo y además es la raíz. Basta con pintar la raíz de NEGRO y el conflicto desaparece.");
+		this.paso(INS_CASO_RAIZ, "ins.padreRojoRaiz");
 		return;
 	}
 
@@ -767,16 +803,16 @@ RedBlack.prototype.fixDoubleRed = function (tree) {
 		// ---- Caso 1: el tío también es rojo -> recoloreo, sin rotaciones ----
 		this.marcarTrio(tree, 1);
 		this.cmd("SetHighlight", uncle.graphicID, 1);
-		this.paso(INS_CASO_1, "Hay doble rojo (" + tree.parent.data + " y " + tree.data + ") y el TÍO (" + uncle.data + ") también es rojo. Con el tío rojo no hace falta rotar: basta con recolorear.");
+		this.paso(INS_CASO_1, "ins.caso1a", [tree.parent.data, tree.data, uncle.data]);
 
 		this.marcarTrio(tree, 0);
 		this.cmd("SetHighlight", uncle.graphicID, 0);
 		this.pintarNegro(tree.parent);
 		this.pintarNegro(uncle);
 		this.pintarRojo(tree.parent.parent);
-		this.paso(INS_CASO_1, "Padre y tío pasan a NEGRO y el abuelo (" + tree.parent.parent.data + ") pasa a ROJO. Cada camino sigue teniendo la misma cantidad de nodos negros que antes.");
+		this.paso(INS_CASO_1, "ins.caso1b", [tree.parent.parent.data]);
 
-		this.paso("", "Pero el abuelo ahora es rojo y su propio padre podría serlo también, así que repetimos la comprobación un nivel más arriba.");
+		this.paso("", "ins.caso1c");
 		this.fixDoubleRed(tree.parent.parent);
 		return;
 	}
@@ -787,10 +823,10 @@ RedBlack.prototype.fixDoubleRed = function (tree) {
 	if (esTriangulo) {
 		// ---- Caso 2: triángulo -> se rota sobre el padre para enderezarlo ----
 		this.marcarTrio(tree, 1);
-		this.paso(INS_CASO_2, "Hay doble rojo y el TÍO es negro (o no existe). Además " + tree.data + ", " + tree.parent.data + " y " + tree.parent.parent.data + " forman un TRIÁNGULO (el nodo está en el lado interior).");
+		this.paso(INS_CASO_2, "ins.caso2a", [tree.data, tree.parent.data, tree.parent.parent.data]);
 
 		this.marcarTrio(tree, 0);
-		this.paso(INS_CASO_2, "Con un triángulo no se puede rotar directamente sobre el abuelo. Primero rotamos sobre el PADRE para convertirlo en una línea recta.");
+		this.paso(INS_CASO_2, "ins.caso2b");
 
 		if (padreEsIzquierdo) {
 			this.singleRotateLeft(tree.parent);
@@ -800,19 +836,19 @@ RedBlack.prototype.fixDoubleRed = function (tree) {
 			this.singleRotateRight(tree.parent);
 			tree = tree.right;
 		}
-		this.paso(INS_CASO_2, "Ya tenemos una línea recta. Seguimos con el Caso 3.");
+		this.paso(INS_CASO_2, "ins.caso2c");
 	}
 
 	// ---- Caso 3: línea recta -> rotación sobre el abuelo + intercambio ----
 	this.marcarTrio(tree, 1);
-	this.paso(INS_CASO_3, "El nodo, su padre y su abuelo están alineados en LÍNEA RECTA y el tío es negro. Esto se arregla con una sola rotación sobre el abuelo (" + tree.parent.parent.data + ").");
+	this.paso(INS_CASO_3, "ins.caso3a", [tree.parent.parent.data]);
 
 	this.marcarTrio(tree, 0);
 	var padre = tree.parent;
 	var abuelo = tree.parent.parent;
 	this.pintarNegro(padre);
 	this.pintarRojo(abuelo);
-	this.paso(INS_CASO_3, "Intercambiamos los colores: el padre (" + padre.data + ") pasa a NEGRO y el abuelo (" + abuelo.data + ") a ROJO. Ahora la rotación.");
+	this.paso(INS_CASO_3, "ins.caso3b", [padre.data, abuelo.data]);
 
 	if (padreEsIzquierdo) {
 		this.singleRotateRight(abuelo);
@@ -821,7 +857,7 @@ RedBlack.prototype.fixDoubleRed = function (tree) {
 		this.singleRotateLeft(abuelo);
 	}
 
-	this.paso(INS_CASO_3, "Tras la rotación, " + padre.data + " queda arriba en negro con dos hijos rojos. Ya no hay dos rojos seguidos y la altura negra no ha cambiado: la inserción termina aquí.");
+	this.paso(INS_CASO_3, "ins.caso3c", [padre.data]);
 }
 
 
@@ -835,7 +871,7 @@ RedBlack.prototype.singleRotateRight = function (tree) {
 	var t2 = A.right;
 
 	this.cmd("SetEdgeHighlight", B.graphicID, A.graphicID, 1);
-	this.paso("", "Rotación simple a la DERECHA sobre " + B.data + ": " + A.data + " sube y " + B.data + " baja a ser su hijo derecho.");
+	this.paso("", "rot.derecha", [B.data, A.data]);
 	this.cmd("SetEdgeHighlight", B.graphicID, A.graphicID, 0);
 
 	if (t2 != null) {
@@ -876,7 +912,7 @@ RedBlack.prototype.singleRotateLeft = function (tree) {
 	var t2 = B.left;
 
 	this.cmd("SetEdgeHighlight", A.graphicID, B.graphicID, 1);
-	this.paso("", "Rotación simple a la IZQUIERDA sobre " + A.data + ": " + B.data + " sube y " + A.data + " baja a ser su hijo izquierdo.");
+	this.paso("", "rot.izquierda", [A.data, B.data]);
 	this.cmd("SetEdgeHighlight", A.graphicID, B.graphicID, 0);
 
 	if (t2 != null) {
@@ -936,11 +972,11 @@ RedBlack.prototype.deleteElement = function (deletedValue) {
 	this.highlightID = this.nextIndex++;
 
 	if (this.treeRoot == null) {
-		this.paso("", "El árbol está vacío: no hay nada que eliminar.");
+		this.paso("", "del.arbolVacio");
 		return this.commands;
 	}
 
-	this.paso("", "Vamos a eliminar " + deletedValue + ". Primero hay que localizarlo, igual que en una búsqueda.");
+	this.paso("", "del.inicio", [deletedValue]);
 	this.treeDelete(this.treeRoot, deletedValue);
 	return this.commands;
 }
@@ -960,7 +996,7 @@ RedBlack.prototype.fixLeftNull = function (tree) {
 	this.cmd("Connect", tree.graphicID, nullLeaf.graphicID, LINK_COLOR);
 	this.resizeTree();
 
-	this.paso("", "Al quitar un nodo negro, ese camino ha perdido un negro. Lo representamos con una hoja DOBLE NEGRA: es una deuda que hay que devolver antes de terminar.");
+	this.paso("", "del.hojaDobleNegra");
 
 	this.fixExtraBlackChild(tree, true);
 
@@ -984,7 +1020,7 @@ RedBlack.prototype.fixRightNull = function (tree) {
 	this.cmd("Connect", tree.graphicID, nullLeaf.graphicID, LINK_COLOR);
 	this.resizeTree();
 
-	this.paso("", "Al quitar un nodo negro, ese camino ha perdido un negro. Lo representamos con una hoja DOBLE NEGRA: es una deuda que hay que devolver antes de terminar.");
+	this.paso("", "del.hojaDobleNegra");
 
 	this.fixExtraBlackChild(tree, false);
 
@@ -1007,14 +1043,14 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 		doubleBlackNode = parNode.right;
 	}
 
-	var nombreS = (sibling == null || sibling.phantomLeaf) ? "el hermano" : sibling.data;
+	var nombreS = (sibling == null || sibling.phantomLeaf) ? "S" : sibling.data;
 
 	if (this.blackLevel(sibling) > 0 && this.blackLevel(sibling.left) > 0 && this.blackLevel(sibling.right) > 0) {
 		// ---- Caso 2: hermano negro con los dos hijos negros ----
 		if (sibling != null) {
 			this.cmd("SetHighlight", sibling.graphicID, 1);
 		}
-		this.paso(DEL_CASO_2, "El hermano (" + nombreS + ") es NEGRO y sus dos hijos también. Nadie del lado del hermano tiene un rojo que prestarnos, así que la deuda no se puede pagar aquí: hay que subirla al padre.");
+		this.paso(DEL_CASO_2, "del.caso2a", [nombreS]);
 		if (sibling != null) {
 			this.cmd("SetHighlight", sibling.graphicID, 0);
 		}
@@ -1024,16 +1060,16 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 			doubleBlackNode.blackLevel = 1;
 			this.fixNodeColor(doubleBlackNode);
 		}
-		this.paso(DEL_CASO_2, "Quitamos un negro a cada hermano: N vuelve a ser negro normal y S se pinta de ROJO. Ese negro que sobra se lo pasamos al padre (" + parNode.data + ").");
+		this.paso(DEL_CASO_2, "del.caso2b", [parNode.data]);
 
 		if (parNode.blackLevel == 0) {
 			this.pintarNegro(parNode);
-			this.paso(DEL_CASO_2, "El padre era ROJO: absorbe el negro extra pasando a NEGRO y la deuda queda saldada. Hemos terminado.");
+			this.paso(DEL_CASO_2, "del.caso2padreRojo");
 		}
 		else {
 			parNode.blackLevel = 2;
 			this.fixNodeColor(parNode);
-			this.paso(DEL_CASO_2, "El padre ya era NEGRO, así que ahora es él quien queda DOBLE NEGRO. Repetimos el análisis un nivel más arriba.");
+			this.paso(DEL_CASO_2, "del.caso2padreNegro");
 			this.fixExtraBlack(parNode);
 		}
 		return;
@@ -1042,24 +1078,24 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 	if (this.blackLevel(sibling) == 0) {
 		// ---- Caso 1: hermano rojo ----
 		this.cmd("SetHighlight", sibling.graphicID, 1);
-		this.paso(DEL_CASO_1, "El hermano (" + nombreS + ") es ROJO. Entonces el padre y los sobrinos son negros. Este caso no resuelve la deuda: lo que hace es transformarla en uno de los otros tres.");
+		this.paso(DEL_CASO_1, "del.caso1a", [nombreS]);
 		this.cmd("SetHighlight", sibling.graphicID, 0);
 
-		this.paso(DEL_CASO_1, "Intercambiamos los colores del padre y del hermano y rotamos el padre en dirección a N. Así N pasa a tener un hermano NEGRO.");
+		this.paso(DEL_CASO_1, "del.caso1b");
 
 		var newPar;
 		if (isLeftChild) {
 			newPar = this.singleRotateLeft(parNode);
 			this.pintarNegro(newPar);
 			this.pintarRojo(newPar.left);
-			this.paso(DEL_CASO_1, "Ya tenemos a N con un hermano negro y un padre rojo. Volvemos a analizar el caso con esta nueva figura.");
+			this.paso(DEL_CASO_1, "del.caso1c");
 			this.fixExtraBlack(newPar.left.left);
 		}
 		else {
 			newPar = this.singleRotateRight(parNode);
 			this.pintarNegro(newPar);
 			this.pintarRojo(newPar.right);
-			this.paso(DEL_CASO_1, "Ya tenemos a N con un hermano negro y un padre rojo. Volvemos a analizar el caso con esta nueva figura.");
+			this.paso(DEL_CASO_1, "del.caso1c");
 			this.fixExtraBlack(newPar.right.right);
 		}
 		return;
@@ -1072,11 +1108,11 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 		// ---- Caso 3: hermano negro, sobrino cercano rojo, lejano negro ----
 		this.cmd("SetHighlight", sibling.graphicID, 1);
 		this.cmd("SetHighlight", sobrinoCercano.graphicID, 1);
-		this.paso(DEL_CASO_3, "El hermano (" + nombreS + ") es NEGRO, su hijo CERCANO a N es rojo y el LEJANO es negro. El rojo está en el lado que no nos sirve para rotar.");
+		this.paso(DEL_CASO_3, "del.caso3a", [nombreS]);
 		this.cmd("SetHighlight", sibling.graphicID, 0);
 		this.cmd("SetHighlight", sobrinoCercano.graphicID, 0);
 
-		this.paso(DEL_CASO_3, "Intercambiamos los colores del hermano y de ese sobrino rojo y rotamos el hermano en dirección contraria a N, para mover el rojo al lado lejano.");
+		this.paso(DEL_CASO_3, "del.caso3b");
 
 		var newSib;
 		if (isLeftChild) {
@@ -1089,7 +1125,7 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 			this.pintarNegro(newSib);
 			this.pintarRojo(newSib.left);
 		}
-		this.paso(DEL_CASO_3, "Ahora el sobrino rojo está en el lado lejano: esto ya es el Caso 4, que sí cierra la deuda.");
+		this.paso(DEL_CASO_3, "del.caso3c");
 		this.fixExtraBlackChild(parNode, isLeftChild);
 		return;
 	}
@@ -1097,11 +1133,11 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 	// ---- Caso 4: hermano negro con el sobrino lejano rojo ----
 	this.cmd("SetHighlight", sibling.graphicID, 1);
 	this.cmd("SetHighlight", sobrinoLejano.graphicID, 1);
-	this.paso(DEL_CASO_4, "El hermano (" + nombreS + ") es NEGRO y su hijo LEJANO a N es ROJO. Este es el caso que resuelve la deuda de una vez.");
+	this.paso(DEL_CASO_4, "del.caso4a", [nombreS]);
 	this.cmd("SetHighlight", sibling.graphicID, 0);
 	this.cmd("SetHighlight", sobrinoLejano.graphicID, 0);
 
-	this.paso(DEL_CASO_4, "El hermano toma el color del padre, el padre y el sobrino lejano se pintan de NEGRO, y rotamos el padre en dirección a N.");
+	this.paso(DEL_CASO_4, "del.caso4b");
 
 	var oldParBlackLevel = parNode.blackLevel;
 	var nuevoPadre;
@@ -1129,7 +1165,7 @@ RedBlack.prototype.fixExtraBlackChild = function (parNode, isLeftChild) {
 			this.fixNodeColor(nuevoPadre.right.right);
 		}
 	}
-	this.paso(DEL_CASO_4, "Ese camino recupera el negro que había perdido y ningún otro camino cambia. La deuda queda saldada y el borrado termina.");
+	this.paso(DEL_CASO_4, "del.caso4c");
 }
 
 
@@ -1142,7 +1178,7 @@ RedBlack.prototype.fixExtraBlack = function (tree) {
 		tree.blackLevel = 1;
 		this.cmd("SetForegroundColor", tree.graphicID, FOREGROUND_BLACK);
 		this.cmd("SetBackgroundColor", tree.graphicID, BACKGROUND_BLACK);
-		this.paso(DEL_CASO_RAIZ, "El doble negro ha subido hasta la RAÍZ. Aquí se descarta sin más: quitar un negro a la raíz baja en uno la altura negra de todos los caminos por igual.");
+		this.paso(DEL_CASO_RAIZ, "del.raizDobleNegro");
 		return;
 	}
 
@@ -1159,8 +1195,8 @@ RedBlack.prototype.treeDelete = function (tree, valueToDelete) {
 	var leftchild = false;
 
 	if (tree == null || tree.phantomLeaf) {
-		this.paso("", "Hemos llegado a una hoja nula sin encontrar el valor.");
-		this.finalizar("El valor " + valueToDelete + " no está en el árbol: no se puede eliminar.");
+		this.paso("", "del.noEncontrado");
+		this.finalizar("del.finNoEncontrado", [valueToDelete]);
 		return;
 	}
 
@@ -1170,13 +1206,13 @@ RedBlack.prototype.treeDelete = function (tree, valueToDelete) {
 	this.cmd("SetHighlight", tree.graphicID, 1);
 
 	if (valueToDelete < tree.data) {
-		this.narrar("", "Comparamos " + valueToDelete + " con " + tree.data + ": es menor, seguimos por el subárbol izquierdo.");
+		this.narrar("", "del.compMenor", [valueToDelete, tree.data]);
 		this.cmd("Step");
 		this.cmd("SetHighlight", tree.graphicID, 0);
 		if (tree.left != null) {
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.left.x, tree.left.y);
-			this.paso("", "Bajamos al hijo izquierdo de " + tree.data + ".");
+			this.paso("", "del.bajaIzq", [tree.data]);
 			this.cmd("Delete", this.highlightID);
 		}
 		this.treeDelete(tree.left, valueToDelete);
@@ -1184,13 +1220,13 @@ RedBlack.prototype.treeDelete = function (tree, valueToDelete) {
 	}
 
 	if (valueToDelete > tree.data) {
-		this.narrar("", "Comparamos " + valueToDelete + " con " + tree.data + ": es mayor, seguimos por el subárbol derecho.");
+		this.narrar("", "del.compMayor", [valueToDelete, tree.data]);
 		this.cmd("Step");
 		this.cmd("SetHighlight", tree.graphicID, 0);
 		if (tree.right != null) {
 			this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 			this.cmd("Move", this.highlightID, tree.right.x, tree.right.y);
-			this.paso("", "Bajamos al hijo derecho de " + tree.data + ".");
+			this.paso("", "del.bajaDer", [tree.data]);
 			this.cmd("Delete", this.highlightID);
 		}
 		this.treeDelete(tree.right, valueToDelete);
@@ -1199,8 +1235,11 @@ RedBlack.prototype.treeDelete = function (tree, valueToDelete) {
 
 	// ---- Nodo encontrado ----
 	var eraNegro = tree.blackLevel > 0;
-	var colorTexto = eraNegro ? "NEGRO" : "ROJO";
-	this.paso("", "Encontrado: " + tree.data + " es el nodo a eliminar y es " + colorTexto + "." + (tree.parent == null ? " Además es la raíz." : ""));
+	var esRaiz = tree.parent == null;
+	var claveEncontrado = eraNegro
+		? (esRaiz ? "del.encontradoNegroRaiz" : "del.encontradoNegro")
+		: (esRaiz ? "del.encontradoRojoRaiz" : "del.encontradoRojo");
+	this.paso("", claveEncontrado, [tree.data]);
 	this.cmd("SetHighlight", tree.graphicID, 0);
 
 	var sinHijoIzq = (tree.left == null) || tree.left.phantomLeaf;
@@ -1224,10 +1263,10 @@ RedBlack.prototype.treeDelete = function (tree, valueToDelete) {
 // nace el doble negro.
 RedBlack.prototype.eliminarSinHijos = function (tree, leftchild, eraNegro, valueToDelete) {
 	if (eraNegro) {
-		this.paso("", "El nodo no tiene hijos reales (solo hojas nulas) y es NEGRO. Al quitarlo, su camino se queda con un negro de menos: aparecerá un DOBLE NEGRO.");
+		this.paso("", "del.sinHijosNegro");
 	}
 	else {
-		this.paso("", "El nodo no tiene hijos reales y es ROJO. Quitar un rojo no cambia la altura negra de ningún camino, así que simplemente desaparece.");
+		this.paso("", "del.sinHijosRojo");
 	}
 
 	this.cmd("Delete", tree.graphicID);
@@ -1240,8 +1279,8 @@ RedBlack.prototype.eliminarSinHijos = function (tree, leftchild, eraNegro, value
 
 	if (tree.parent == null) {
 		this.treeRoot = null;
-		this.paso("", "Era el único nodo del árbol, que queda vacío.");
-		this.finalizar("Eliminado " + valueToDelete + ". El árbol está vacío.");
+		this.paso("", "del.eraUnico");
+		this.finalizar("del.finVacio", [valueToDelete]);
 		return;
 	}
 
@@ -1268,7 +1307,7 @@ RedBlack.prototype.eliminarSinHijos = function (tree, leftchild, eraNegro, value
 		}
 	}
 
-	this.finalizar("Eliminado " + valueToDelete + ". El árbol vuelve a cumplir las propiedades rojo-negro.");
+	this.finalizar("del.fin", [valueToDelete]);
 }
 
 
@@ -1279,10 +1318,10 @@ RedBlack.prototype.eliminarConUnHijo = function (tree, leftchild, eraNegro, sinH
 	var hojaSobrante = sinHijoIzq ? tree.left : tree.right;
 
 	if (eraNegro) {
-		this.paso("", "El nodo es NEGRO y tiene un único hijo real (" + hijo.data + "). En un árbol rojo-negro ese hijo es forzosamente ROJO: ocupará su sitio y se repintará de NEGRO para devolver el negro perdido.");
+		this.paso("", "del.unHijoNegro", [hijo.data]);
 	}
 	else {
-		this.paso("", "El nodo es ROJO y tiene un único hijo real (" + hijo.data + "): el hijo ocupa su lugar sin más ajustes.");
+		this.paso("", "del.unHijoRojo", [hijo.data]);
 	}
 
 	if (hojaSobrante != null) {
@@ -1303,14 +1342,14 @@ RedBlack.prototype.eliminarConUnHijo = function (tree, leftchild, eraNegro, sinH
 			this.pintarNegro(this.treeRoot);
 		}
 		this.resizeTree();
-		this.paso("", "Era la raíz: su hijo " + hijo.data + " pasa a ser la nueva raíz y se pinta de NEGRO.");
-		this.finalizar("Eliminado " + valueToDelete + ". El árbol vuelve a cumplir las propiedades rojo-negro.");
+		this.paso("", "del.eraRaizHijo", [hijo.data]);
+		this.finalizar("del.fin", [valueToDelete]);
 		return;
 	}
 
 	this.cmd("Disconnect", tree.parent.graphicID, tree.graphicID);
 	this.cmd("Connect", tree.parent.graphicID, hijo.graphicID, LINK_COLOR);
-	this.paso("", "El hijo " + hijo.data + " se engancha directamente al padre " + tree.parent.data + ", ocupando el hueco.");
+	this.paso("", "del.hijoEngancha", [hijo.data, tree.parent.data]);
 	this.cmd("Delete", tree.graphicID);
 
 	if (leftchild) {
@@ -1325,30 +1364,30 @@ RedBlack.prototype.eliminarConUnHijo = function (tree, leftchild, eraNegro, sinH
 	if (eraNegro) {
 		hijo.blackLevel++;
 		this.fixNodeColor(hijo);
-		this.paso("", "El hijo rojo absorbe el negro que faltaba y pasa a NEGRO. El camino recupera su altura negra sin tocar nada más.");
+		this.paso("", "del.hijoAbsorbe");
 		this.fixExtraBlack(hijo);
 	}
 
-	this.finalizar("Eliminado " + valueToDelete + ". El árbol vuelve a cumplir las propiedades rojo-negro.");
+	this.finalizar("del.fin", [valueToDelete]);
 }
 
 
 // Caso "dos hijos": se sustituye por el predecesor en orden y el problema se
 // traslada a borrar ese predecesor, que tiene como mucho un hijo.
 RedBlack.prototype.eliminarConDosHijos = function (tree, valueToDelete) {
-	this.paso("", "El nodo tiene DOS hijos reales, así que no se puede quitar directamente. Buscamos su predecesor en orden: el mayor del subárbol izquierdo (izquierda una vez, y luego siempre a la derecha).");
+	this.paso("", "del.dosHijos");
 
 	this.highlightID = this.nextIndex++;
 	this.cmd("CreateHighlightCircle", this.highlightID, HIGHLIGHT_COLOR, tree.x, tree.y);
 
 	var tmp = tree.left;
 	this.cmd("Move", this.highlightID, tmp.x, tmp.y);
-	this.paso("", "Un paso a la izquierda, hasta " + tmp.data + ".");
+	this.paso("", "del.pasoIzq", [tmp.data]);
 
 	while (tmp.right != null && !tmp.right.phantomLeaf) {
 		tmp = tmp.right;
 		this.cmd("Move", this.highlightID, tmp.x, tmp.y);
-		this.paso("", "Todo lo a la derecha que se pueda: llegamos a " + tmp.data + ".");
+		this.paso("", "del.todoDerecha", [tmp.data]);
 	}
 
 	if (tmp.right != null) {
@@ -1365,12 +1404,12 @@ RedBlack.prototype.eliminarConDosHijos = function (tree, valueToDelete) {
 	this.cmd("SetForegroundColor", labelID, BLUE);
 	tree.data = tmp.data;
 	this.cmd("Move", labelID, tree.x, tree.y);
-	this.paso("", "Copiamos el valor del predecesor (" + valorPredecesor + ") dentro del nodo que queríamos borrar. El orden del árbol se mantiene intacto.");
+	this.paso("", "del.copiaPredecesor", [valorPredecesor]);
 
 	this.cmd("Delete", labelID);
 	this.cmd("SetText", tree.graphicID, tree.data);
 	this.cmd("Delete", this.highlightID);
-	this.paso("", "Ahora el valor " + valorPredecesor + " está duplicado. El borrado real es el del nodo de abajo, que tiene como mucho un hijo: un caso que ya sabemos resolver.");
+	this.paso("", "del.valorDuplicado", [valorPredecesor]);
 
 	if (tmp.left == null) {
 		this.cmd("Delete", tmp.graphicID);
@@ -1378,29 +1417,29 @@ RedBlack.prototype.eliminarConDosHijos = function (tree, valueToDelete) {
 			tmp.parent.right = null;
 			this.resizeTree();
 			if (eraNegro) {
-				this.paso("", "El nodo predecesor era NEGRO y no tenía hijos: su camino pierde un negro.");
+				this.paso("", "del.predNegroSinHijos");
 				this.fixRightNull(tmp.parent);
 			}
 			else {
-				this.paso("", "El nodo predecesor era ROJO y sus dos hijos eran nulos: desaparece sin más ajustes.");
+				this.paso("", "del.predRojoSinHijos");
 			}
 		}
 		else {
 			tree.left = null;
 			this.resizeTree();
 			if (eraNegro) {
-				this.paso("", "El nodo predecesor era NEGRO y no tenía hijos: su camino pierde un negro.");
+				this.paso("", "del.predNegroSinHijos");
 				this.fixLeftNull(tmp.parent);
 			}
 			else {
-				this.paso("", "El nodo predecesor era ROJO y sus dos hijos eran nulos: desaparece sin más ajustes.");
+				this.paso("", "del.predRojoSinHijos");
 			}
 		}
 	}
 	else {
 		this.cmd("Disconnect", tmp.parent.graphicID, tmp.graphicID);
 		this.cmd("Connect", tmp.parent.graphicID, tmp.left.graphicID, LINK_COLOR);
-		this.paso("", "El hijo izquierdo del predecesor ocupa su lugar.");
+		this.paso("", "del.predHijoIzq");
 		this.cmd("Delete", tmp.graphicID);
 
 		var esHijoDeTree = tmp.parent == tree;
@@ -1416,10 +1455,10 @@ RedBlack.prototype.eliminarConDosHijos = function (tree, valueToDelete) {
 
 		if (eraNegro) {
 			if (!tmp.left.phantomLeaf) {
-				this.paso("", "El predecesor era NEGRO y tenía un hijo, que es forzosamente ROJO: ese hijo se repinta de NEGRO y devuelve el negro perdido.");
+				this.paso("", "del.predNegroConHijo");
 			}
 			else {
-				this.paso("", "El predecesor era NEGRO y no tenía hijos reales: aparece un DOBLE NEGRO que hay que resolver.");
+				this.paso("", "del.predNegroSinReales");
 			}
 			tmp.left.blackLevel++;
 			if (tmp.left.phantomLeaf) {
@@ -1434,11 +1473,11 @@ RedBlack.prototype.eliminarConDosHijos = function (tree, valueToDelete) {
 			}
 		}
 		else {
-			this.paso("", "El predecesor era ROJO: quitarlo no altera la altura negra de ningún camino.");
+			this.paso("", "del.predRojo");
 		}
 	}
 
-	this.finalizar("Eliminado " + valueToDelete + ". El árbol vuelve a cumplir las propiedades rojo-negro.");
+	this.finalizar("del.fin", [valueToDelete]);
 }
 
 
@@ -1584,6 +1623,9 @@ RedBlackNode.prototype.isLeftChild = function () {
 var currentAlg;
 
 function init() {
+	// El idioma guardado se restaura ANTES de construir nada, para que los
+	// controles nazcan ya con el rótulo correcto.
+	Idioma.restaurar();
 	var animManag = initCanvas();
 	currentAlg = new RedBlack(animManag, LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT);
 	if (typeof initInterfaz === "function") {

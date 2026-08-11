@@ -1,14 +1,20 @@
 // Interfaz de la visualización: panel de pasos, progreso, historial, leyenda,
-// zoom y atajos de teclado.
+// zoom, idioma y atajos de teclado.
 //
 // El motor de animación (animation/) solo sabe de una cosa: el "canal de
 // narración", que es la etiqueta 0. Cada vez que su texto cambia —hacia delante
 // o al deshacer— llega aquí a través de ObjectManager.onNarration.
+//
+// Lo que llega NO es texto, sino claves y argumentos:
+//     faseClave §§ casoClave §§ textoClave §§ args §§ estado §§ argsEstado
+// La traducción ocurre al pintar, así que cambiar de idioma reescribe el paso
+// actual y todo el historial sin rehacer la animación.
 
 (function () {
 	"use strict";
 
 	var SEPARADOR = "§§";
+	var SEP_ARGS = "¦";
 
 	var el = {};
 	var algoritmo = null;
@@ -18,9 +24,17 @@
 	var historial = [];
 	var pasoActual = 0;
 	var totalPasos = 0;
+	// Última narración recibida, guardada como claves para poder repintarla al
+	// cambiar de idioma.
+	var narracionActual = null;
+	var estadoActual = "";
 
 	function $(id) {
 		return document.getElementById(id);
+	}
+
+	function t(clave, args) {
+		return Idioma.t(clave, args);
 	}
 
 	function cachearElementos() {
@@ -35,6 +49,7 @@
 		el.estadoAnimacion = $("estadoAnimacion");
 		el.shell = document.querySelector(".canvas-shell");
 		el.modal = $("modalAyuda");
+		el.btnIdioma = $("btnIdioma");
 	}
 
 	/////////////////////////////////////////////////////////////////////////
@@ -44,50 +59,59 @@
 	function parsearNarracion(bruto) {
 		var partes = String(bruto == null ? "" : bruto).split(SEPARADOR);
 		if (partes.length < 3) {
-			// Texto suelto (no debería ocurrir): se muestra tal cual.
-			return { fase: "", caso: "", detalle: partes.join(" ").trim(), estado: "" };
+			return null;
+		}
+		function args(texto) {
+			return texto ? texto.split(SEP_ARGS) : [];
 		}
 		return {
-			fase: partes[0].trim(),
-			caso: partes[1].trim(),
-			detalle: partes[2].trim(),
-			estado: (partes[3] || "").trim()
+			fase: partes[0],
+			caso: partes[1],
+			clave: partes[2],
+			args: args(partes[3]),
+			estado: partes[4] || "",
+			argsEstado: args(partes[5])
 		};
 	}
 
 	function claseDeFase(fase) {
 		switch (fase) {
-			case "Insertar": return "chip--insertar";
-			case "Eliminar": return "chip--eliminar";
-			case "Buscar": return "chip--buscar";
-			case "Recorrido": return "chip--recorrido";
-			case "Demo": return "chip--demo";
-			case "Limpiar": return "chip--limpiar";
+			case "fase.insertar": return "chip--insertar";
+			case "fase.eliminar": return "chip--eliminar";
+			case "fase.buscar": return "chip--buscar";
+			case "fase.recorrido": return "chip--recorrido";
+			case "fase.demo": return "chip--demo";
+			case "fase.limpiar": return "chip--limpiar";
 			default: return "chip--neutro";
 		}
 	}
 
-	function pintarNarracion(n) {
-		el.fase.textContent = n.fase || "Listo";
+	function pintarNarracion() {
+		var n = narracionActual;
+		if (n === null) {
+			return;
+		}
+
+		el.fase.textContent = n.fase ? t(n.fase) : t("ui.listo");
 		el.fase.className = "chip chip--fase " + claseDeFase(n.fase);
 
 		if (n.caso) {
-			el.caso.textContent = n.caso;
+			el.caso.textContent = t(n.caso);
 			el.caso.hidden = false;
 		}
 		else {
 			el.caso.hidden = true;
 		}
 
-		el.texto.textContent = n.detalle;
+		el.texto.textContent = t(n.clave, n.args);
 
 		if (n.estado === "ok") {
-			el.estado.textContent = "✓ Propiedades verificadas";
+			el.estado.textContent = t("ui.propiedadesOk");
 			el.estado.className = "chip chip--estado chip--ok";
 			el.estado.hidden = false;
 		}
-		else if (n.estado && n.estado.indexOf("warn:") === 0) {
-			el.estado.textContent = "⚠ " + n.estado.slice(5);
+		else if (n.estado.indexOf("warn:") === 0) {
+			el.estado.textContent = "⚠ " + t(n.estado.slice(5), n.argsEstado);
 			el.estado.className = "chip chip--estado chip--warn";
 			el.estado.hidden = false;
 		}
@@ -97,15 +121,12 @@
 	}
 
 	function registrarEnHistorial(n) {
-		if (!n.detalle) {
-			return;
-		}
 		// Al retroceder, el paso actual baja: todo lo que quede por delante deja
 		// de ser válido.
 		historial = historial.filter(function (entrada) {
 			return entrada.paso < pasoActual;
 		});
-		historial.push({ paso: pasoActual, fase: n.fase, caso: n.caso, detalle: n.detalle });
+		historial.push({ paso: pasoActual, fase: n.fase, caso: n.caso, clave: n.clave, args: n.args });
 		if (!el.historialLista.hidden) {
 			pintarHistorial();
 		}
@@ -116,7 +137,7 @@
 		if (historial.length === 0) {
 			var vacio = document.createElement("li");
 			vacio.className = "historial-vacio";
-			vacio.textContent = "Todavía no hay pasos que mostrar.";
+			vacio.textContent = t("ui.historialVacio");
 			el.historialLista.appendChild(vacio);
 			return;
 		}
@@ -125,10 +146,10 @@
 			li.className = "historial-item" + (indice === historial.length - 1 ? " historial-item--actual" : "");
 			var cabecera = document.createElement("span");
 			cabecera.className = "historial-etiqueta";
-			cabecera.textContent = entrada.caso || entrada.fase || "Paso";
+			cabecera.textContent = t(entrada.caso || entrada.fase);
 			var cuerpo = document.createElement("span");
 			cuerpo.className = "historial-detalle";
-			cuerpo.textContent = entrada.detalle;
+			cuerpo.textContent = t(entrada.clave, entrada.args);
 			li.appendChild(cabecera);
 			li.appendChild(cuerpo);
 			el.historialLista.appendChild(li);
@@ -138,10 +159,11 @@
 
 	function alNarrar(bruto) {
 		var n = parsearNarracion(bruto);
-		if (!n.detalle && !n.caso) {
+		if (n === null || !n.clave) {
 			return;
 		}
-		pintarNarracion(n);
+		narracionActual = n;
+		pintarNarracion();
 		registrarEnHistorial(n);
 	}
 
@@ -152,24 +174,76 @@
 	function alProgresar(actual, total) {
 		pasoActual = actual;
 		totalPasos = total;
-		el.contador.textContent = "Paso " + actual + " de " + total;
-		var porcentaje = total > 0 ? Math.round((actual / total) * 100) : 0;
+		pintarContador();
+	}
+
+	function pintarContador() {
+		el.contador.textContent = t("ui.contador", [pasoActual, totalPasos]);
+		var porcentaje = totalPasos > 0 ? Math.round((pasoActual / totalPasos) * 100) : 0;
 		el.barra.style.width = porcentaje + "%";
 	}
 
 	function alCambiarEstado(estado) {
-		var textos = {
-			"reproduciendo": "En marcha",
-			"pausa": "En pausa",
-			"fin": "Terminado"
+		estadoActual = estado;
+		pintarEstadoAnimacion();
+	}
+
+	function pintarEstadoAnimacion() {
+		var claves = {
+			"reproduciendo": "ui.estadoCorriendo",
+			"pausa": "ui.estadoPausa",
+			"fin": "ui.estadoFin"
 		};
 		var clases = {
 			"reproduciendo": "estado-chip estado-chip--corriendo",
 			"pausa": "estado-chip estado-chip--pausa",
 			"fin": "estado-chip estado-chip--fin"
 		};
-		el.estadoAnimacion.textContent = textos[estado] || "Lista";
-		el.estadoAnimacion.className = clases[estado] || "estado-chip estado-chip--fin";
+		el.estadoAnimacion.textContent = t(claves[estadoActual] || "ui.estadoLista");
+		el.estadoAnimacion.className = clases[estadoActual] || "estado-chip estado-chip--fin";
+	}
+
+	/////////////////////////////////////////////////////////////////////////
+	// Idioma
+	/////////////////////////////////////////////////////////////////////////
+
+	// Traduce el HTML estático marcado con data-i18n / data-i18n-title /
+	// data-i18n-aria / data-i18n-html.
+	function traducirEstaticos() {
+		var nodos = document.querySelectorAll("[data-i18n]");
+		var i;
+		for (i = 0; i < nodos.length; i++) {
+			nodos[i].textContent = t(nodos[i].getAttribute("data-i18n"));
+		}
+		nodos = document.querySelectorAll("[data-i18n-html]");
+		for (i = 0; i < nodos.length; i++) {
+			nodos[i].innerHTML = t(nodos[i].getAttribute("data-i18n-html"));
+		}
+		nodos = document.querySelectorAll("[data-i18n-title]");
+		for (i = 0; i < nodos.length; i++) {
+			nodos[i].setAttribute("title", t(nodos[i].getAttribute("data-i18n-title")));
+		}
+		nodos = document.querySelectorAll("[data-i18n-aria]");
+		for (i = 0; i < nodos.length; i++) {
+			nodos[i].setAttribute("aria-label", t(nodos[i].getAttribute("data-i18n-aria")));
+		}
+	}
+
+	function aplicarIdioma() {
+		traducirEstaticos();
+		algoritmo.traducirControles();
+		traducirControlesAnimacion();
+		pintarContador();
+		pintarEstadoAnimacion();
+		if (narracionActual === null) {
+			el.texto.innerHTML = t("ui.bienvenida");
+		}
+		else {
+			pintarNarracion();
+		}
+		if (!el.historialLista.hidden) {
+			pintarHistorial();
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////
@@ -252,6 +326,8 @@
 				abrir(false);
 			}
 		};
+
+		el.btnIdioma.onclick = function () { Idioma.alternar(); };
 	}
 
 	function configurarTeclado() {
@@ -290,6 +366,9 @@
 		objectManager.onNarration = alNarrar;
 		onProgresoAnimacion = alProgresar;
 		onEstadoAnimacion = alCambiarEstado;
+
+		Idioma.alCambiar(aplicarIdioma);
+		aplicarIdioma();
 
 		observarTamano();
 		configurarZoom();

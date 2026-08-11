@@ -91,7 +91,21 @@ body.VisualizationMainPage {
 }
 
 .VisualizationMainPage .header-acciones {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	margin-left: auto;
+}
+
+.VisualizationMainPage .boton-idioma {
+	min-width: 74px;
+	font-weight: 700;
+	color: var(--text-primary);
+	border-color: var(--accent);
+}
+
+.VisualizationMainPage .boton-idioma::before {
+	content: "🌐 ";
 }
 
 /* ---------- Área de trabajo ---------- */

@@ -27,6 +27,7 @@ Luego entra en `http://localhost:8080/`.
 - La animación **arranca en pausa**: cada pulsación de **Siguiente** avanza un paso y el panel inferior explica exactamente qué está pasando y en qué caso del algoritmo estás.
 - **Historial** despliega los pasos anteriores de la operación en curso.
 - **Reglas y atajos** (arriba a la derecha) recuerda las cinco propiedades del árbol.
+- El botón **🌐 English / Español** cambia el idioma de toda la interfaz, incluida la explicación del paso que estés viendo. La elección se recuerda entre visitas.
 
 Atajos: `→` siguiente · `←` anterior · `Espacio` reproducir/pausar · `Inicio`/`Fin` principio o final · `Esc` cerrar la ayuda.
 
@@ -36,16 +37,23 @@ Atajos: `→` siguiente · `←` anterior · `Espacio` reproducir/pausar · `Ini
 |-----|--------|
 | Lógica del árbol, narración de los pasos y controles | [`viz/algorithm/RedBlack.js`](viz/algorithm/RedBlack.js) |
 | Clase base de algoritmos (Galles) | [`viz/algorithm/Algorithm.js`](viz/algorithm/Algorithm.js) |
-| Panel de pasos, historial, zoom y atajos | [`viz/ui/interfaz.js`](viz/ui/interfaz.js) |
+| Panel de pasos, historial, zoom, idioma y atajos | [`viz/ui/interfaz.js`](viz/ui/interfaz.js) |
+| Diccionario de textos (español e inglés) | [`viz/ui/idiomas.js`](viz/ui/idiomas.js) |
 | Motor de animación y cámara del lienzo | [`viz/animation/`](viz/animation/) |
 | Entrada HTML | [`viz/index.html`](viz/index.html) |
 | Estilos | [`viz/css/visualization.css`](viz/css/visualization.css) |
 
 ### Cómo funciona la narración
 
-El algoritmo nunca emite un paso mudo: todo pasa por `RedBlack.prototype.paso(caso, detalle, estado)`, que escribe el texto y su `Step` juntos. Ese texto viaja por el "canal de narración" (la etiqueta con identificador `0`, que no se dibuja en el lienzo) hasta `ObjectManager.setText`, que lo reenvía al panel HTML. Como el mecanismo de deshacer del motor también termina llamando a `setText`, el panel se sincroniza igual hacia delante que hacia atrás.
+El algoritmo nunca emite un paso mudo: todo pasa por `RedBlack.prototype.paso(caso, clave, args, estado)`, que emite el mensaje y su `Step` juntos. Y no emite texto, sino la **clave** del mensaje y sus argumentos: quien traduce es el panel, al pintar. Por eso cambiar de idioma reescribe también el paso que ya está en pantalla y todo el historial, sin rehacer la animación.
 
-El formato interno del mensaje es `fase§§caso§§detalle§§estado`.
+El mensaje viaja por el "canal de narración" (la etiqueta con identificador `0`, que no se dibuja en el lienzo) hasta `ObjectManager.setText`, que lo reenvía al panel HTML. Como el mecanismo de deshacer del motor también termina llamando a `setText`, el panel se sincroniza igual hacia delante que hacia atrás.
+
+El formato interno del mensaje es `faseClave§§casoClave§§textoClave§§args§§estado§§argsEstado`.
+
+### Cómo añadir o cambiar textos
+
+Todos los textos visibles viven en [`viz/ui/idiomas.js`](viz/ui/idiomas.js), con una entrada por clave en `es` y en `en` (`{0}`, `{1}`… son los argumentos). El HTML estático se traduce con los atributos `data-i18n`, `data-i18n-title`, `data-i18n-aria` y `data-i18n-html`. Si una clave falta en inglés se usa el español como respaldo, y si falta en ambos se muestra la clave, así que un olvido se ve enseguida.
 
 ### Validación de propiedades
 

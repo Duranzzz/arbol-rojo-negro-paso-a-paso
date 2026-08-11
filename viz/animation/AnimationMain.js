@@ -40,6 +40,52 @@ var LOGICAL_CANVAS_HEIGHT = 500;
 var onEstadoAnimacion = null;
 var onProgresoAnimacion = null;
 
+var etiquetaVelocidad = null;
+
+
+// El rótulo de reproducir/pausar depende del estado Y del idioma, así que se
+// calcula en un solo sitio.
+function traducirBotonPlayPause()
+{
+	if (!playPauseBackButton)
+	{
+		return;
+	}
+	var clave = paused ? "ui.reproducir" : "ui.pausar";
+	var claveTitulo = paused ? "ui.reproducirTitulo" : "ui.pausarTitulo";
+	playPauseBackButton.setAttribute("value", Idioma.t(clave));
+	playPauseBackButton.setAttribute("title", Idioma.t(claveTitulo));
+}
+
+
+// Reescribe los controles de reproducción con el idioma activo.
+function traducirControlesAnimacion()
+{
+	var pares = [
+		[skipBackButton, null, "ui.alPrincipio"],
+		[stepBackButton, "ui.anterior", "ui.anteriorTitulo"],
+		[stepForwardButton, "ui.siguiente", "ui.siguienteTitulo"],
+		[skipForwardButton, null, "ui.alFinal"]
+	];
+	for (var i = 0; i < pares.length; i++)
+	{
+		if (!pares[i][0])
+		{
+			continue;
+		}
+		if (pares[i][1])
+		{
+			pares[i][0].setAttribute("value", Idioma.t(pares[i][1]));
+		}
+		pares[i][0].setAttribute("title", Idioma.t(pares[i][2]));
+	}
+	traducirBotonPlayPause();
+	if (etiquetaVelocidad)
+	{
+		etiquetaVelocidad.innerText = Idioma.t("ui.velocidad");
+	}
+}
+
 
 function reorderSibling(node1, node2) 
 {
@@ -239,20 +285,11 @@ function doStepBack()
 function doPlayPause()
 {
 	paused = !paused;
-	if (paused)
+	if (paused && skipBackButton.disabled == false)
 	{
-		playPauseBackButton.setAttribute("value", "▶  Reproducir");
-		playPauseBackButton.setAttribute("title", "Reproducir la animación sin parar en cada paso (Espacio)");
-		if (skipBackButton.disabled == false)
-		{
-			stepBackButton.disabled = false;
-		}
+		stepBackButton.disabled = false;
 	}
-	else
-	{
-		playPauseBackButton.setAttribute("value", "❚❚  Pausar");
-		playPauseBackButton.setAttribute("title", "Pausar para avanzar paso a paso (Espacio)");
-	}
+	traducirBotonPlayPause();
 	animationManager.SetPaused(paused);
 }
 
@@ -325,15 +362,12 @@ function initCanvas()
 	}
 
 	skipBackButton = createButton("⏮", animationManager.skipBack.bind(animationManager),
-		"Volver al principio de la operación (Inicio)", "boton-icono");
-	stepBackButton = createButton("◀  Anterior", animationManager.stepBack.bind(animationManager),
-		"Retroceder un paso (flecha izquierda)");
-	playPauseBackButton = createButton("▶  Reproducir", doPlayPause,
-		"Reproducir la animación sin parar en cada paso (Espacio)", "boton-reproducir");
-	stepForwardButton = createButton("Siguiente  ▶", animationManager.step.bind(animationManager),
-		"Avanzar un paso (flecha derecha)");
+		"", "boton-icono");
+	stepBackButton = createButton("", animationManager.stepBack.bind(animationManager), "");
+	playPauseBackButton = createButton("", doPlayPause, "", "boton-reproducir");
+	stepForwardButton = createButton("", animationManager.step.bind(animationManager), "");
 	skipForwardButton = createButton("⏭", animationManager.skipForward.bind(animationManager),
-		"Ir al final de la operación (Fin)", "boton-icono");
+		"", "boton-icono");
 
 	controlBar.appendChild(buttonGroup);
 
@@ -341,8 +375,8 @@ function initCanvas()
 	sliderGroup.className = "reproduccion-velocidad";
 
 	var txtNode = document.createElement("label");
-	txtNode.innerText = "Velocidad";
 	txtNode.className = "campo-etiqueta";
+	etiquetaVelocidad = txtNode;
 
 	var element = document.createElement("div"); // el deslizador
 
@@ -375,6 +409,8 @@ function initCanvas()
 					  }); 
 	
 	animationManager.SetSpeed(speed);
+
+	traducirControlesAnimacion();
 
 	// El tamaño del lienzo ya no se guarda en cookies ni es fijo: se ajusta al
 	// hueco que le deja el diseño (ver ajustarLienzo).
